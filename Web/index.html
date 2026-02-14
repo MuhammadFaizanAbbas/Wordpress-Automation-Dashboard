@@ -339,7 +339,7 @@
         btn.disabled = true;
         btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Syncing...`;
         await fetch(POST_API, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ rowId, action }) });
-        setTimeout(() => fetchData(), 7000);
+        setTimeout(() => fetchData(), 9000);
     }
 
     function updateChart(counts) {
@@ -356,3 +356,4 @@
 </script>
 </body>
 </html>
+
