@@ -253,7 +253,7 @@
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ rowId: rowId, action: action })
             });
-            setTimeout(() => fetchData(), 3000);
+            setTimeout(() => fetchData(), 5000);
         } catch (e) {
             alert("Error syncing with n8n.");
             btn.disabled = false;
@@ -281,4 +281,5 @@
     window.onload = fetchData;
 </script>
 </body>
+
 </html>
