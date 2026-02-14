@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Content OS | Automation Command Center</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { --sidebar-width: 260px; --primary-dark: #1a1d21; --accent: #0d6efd; }
+        body { background-color: #f0f2f5; font-family: 'Segoe UI', sans-serif; overflow-x: hidden; }
+        
+        /* Navigation Sidebar */
+        #sidebar { width: var(--sidebar-width); height: 100vh; position: fixed; background: var(--primary-dark); color: white; padding: 25px; z-index: 1000; }
+        #main-content { margin-left: var(--sidebar-width); padding: 40px; width: calc(100% - var(--sidebar-width)); min-height: 100vh; }
+        .nav-link { color: #9ea7af; cursor: pointer; border-radius: 10px; margin-bottom: 8px; padding: 12px; display: block; text-decoration: none; transition: 0.3s; font-weight: 500; }
+        .nav-link:hover, .nav-link.active { background: rgba(13, 110, 253, 0.2); color: white; border-left: 4px solid var(--accent); }
+
+        /* Skeleton Pulse Animation */
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+        .skeleton { background: #e0e6ed; border-radius: 12px; animation: pulse 1.5s infinite ease-in-out; display: block; }
+        .skeleton-card { height: 140px; width: 100%; margin-bottom: 20px; }
+        .skeleton-chart { height: 350px; width: 100%; }
+        .skeleton-article { height: 450px; width: 100%; margin-bottom: 30px; }
+
+        /* Dashboard Components */
+        .stat-card { border: none; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); background: white; padding: 25px; text-align: center; }
+        .card-review { border: none; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); background: white; transition: 0.3s; overflow: hidden; }
+        
+        .verdict-header { padding: 12px; font-weight: 700; text-align: center; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 1px; }
+        .verdict-ready { background: #d1e7dd; color: #0f5132; }
+        .verdict-fix { background: #f8d7da; color: #842029; }
+
+        .html-preview-box { background: white; border: 1px solid #edf2f7; padding: 25px; border-radius: 12px; max-height: 400px; overflow-y: auto; line-height: 1.7; color: #2d3748; }
+        .audit-pill { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 12px; padding: 12px; margin-bottom: 10px; font-weight: 500; font-size: 0.9rem; }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .status-pill { padding: 6px 16px; border-radius: 30px; font-size: 0.75rem; font-weight: 700; }
+
+        /* Empty State Styling */
+        .empty-state { text-align: center; padding: 60px 20px; background: white; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+        .empty-icon { font-size: 80px; margin-bottom: 20px; display: block; }
+    </style>
+</head>
+<body>
+
+<div id="sidebar">
+    <h3 class="mb-5 text-accent fw-bold text-center">CONTENT OS</h3>
+    <nav class="nav flex-column">
+        <a id="link-stats" class="nav-link active" onclick="showTab('tab-stats')">📊 Dashboard</a>
+        <a id="link-review" class="nav-link" onclick="showTab('tab-review')">⏳ Review Queue <span id="badge-pending" class="badge bg-primary float-end">0</span></a>
+        <a id="link-history" class="nav-link" onclick="showTab('tab-history')">📜 History Log</a>
+    </nav>
+</div>
+
+<div id="main-content">
+    
+    <div id="tab-stats" class="tab-content active">
+        <div class="d-flex justify-content-between align-items-center mb-5">
+            <div>
+                <h2 class="fw-bold mb-0">System Overview</h2>
+                <p class="text-muted">Content pipeline performance metrics</p>
+            </div>
+            <button onclick="fetchData()" class="btn btn-white border shadow-sm px-4">🔄 Refresh Data</button>
+        </div>
+
+        <div id="stats-skeleton" class="row g-4 mb-5">
+            <div class="col-md-4"><div class="skeleton skeleton-card"></div></div>
+            <div class="col-md-4"><div class="skeleton skeleton-card"></div></div>
+            <div class="col-md-4"><div class="skeleton skeleton-card"></div></div>
+        </div>
+
+        <div id="stats-real" class="row g-4 mb-5" style="display:none;">
+            <div class="col-md-4">
+                <div class="card stat-card">
+                    <h6 class="text-muted text-uppercase fw-bold small mb-2">Pending Review</h6>
+                    <h2 id="count-pending" class="display-5 fw-bold">0</h2>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card stat-card">
+                    <h6 class="text-muted text-uppercase fw-bold small mb-2 text-success">Approved Articles</h6>
+                    <h2 id="count-approved" class="display-5 fw-bold text-success">0</h2>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card stat-card">
+                    <h6 class="text-muted text-uppercase fw-bold small mb-2 text-danger">Rejected Items</h6>
+                    <h2 id="count-rejected" class="display-5 fw-bold text-danger">0</h2>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-7">
+                <div class="card p-4 border-0 shadow-sm rounded-4">
+                    <h5 class="fw-bold mb-4">Pipeline Distribution</h5>
+                    <div id="chart-skeleton" class="skeleton skeleton-chart"></div>
+                    <canvas id="statusChart" style="display:none"></canvas>
+                </div>
+            </div>
+            <div class="col-md-5">
+                <div class="card p-4 border-0 shadow-sm rounded-4 bg-primary text-white h-100 d-flex flex-column align-items-center justify-content-center text-center">
+                    <h3 class="fw-bold mb-3">AI Verdict Engine</h3>
+                    <p class="opacity-75">Our automated audit engine analyzes keyword density, image counts, and link integrity in real-time.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="tab-review" class="tab-content">
+        <h2 class="fw-bold mb-4">Pending Approval</h2>
+        <div id="review-skeleton">
+            <div class="skeleton skeleton-article"></div>
+        </div>
+        <div id="pending-list"></div>
+    </div>
+
+    <div id="tab-history" class="tab-content">
+        <h2 class="fw-bold mb-4">Master History</h2>
+        <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="bg-light">
+                    <tr>
+                        <th class="ps-4">Posted Date</th>
+                        <th>Article</th>
+                        <th>Status</th>
+                        <th class="text-end pe-4">Result</th>
+                    </tr>
+                </thead>
+                <tbody id="history-table"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    const GET_API = "https://cardealership.app.n8n.cloud/webhook/c5c02f8c-e778-4c2d-a612-6712ba77fcf4";
+    const POST_API = "https://cardealership.app.n8n.cloud/webhook/91398f32-64a8-409b-a183-6d801b3900cd";
+    let chartInstance = null;
+
+    function showTab(tabId) {
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        document.getElementById('link-' + tabId.split('-')[1]).classList.add('active');
+    }
+
+    async function fetchData() {
+        toggleUIState(false);
+        try {
+            const res = await fetch(GET_API);
+            const data = await res.json();
+            renderUI(data);
+        } catch (e) {
+            console.error("Fetch error:", e);
+            alert("Connection error to n8n backend.");
+            toggleUIState(true);
+        }
+    }
+
+    function toggleUIState(isLoaded) {
+        document.getElementById('stats-skeleton').style.display = isLoaded ? 'none' : 'flex';
+        document.getElementById('stats-real').style.display = isLoaded ? 'flex' : 'none';
+        document.getElementById('chart-skeleton').style.display = isLoaded ? 'none' : 'block';
+        document.getElementById('statusChart').style.display = isLoaded ? 'block' : 'none';
+        document.getElementById('review-skeleton').style.display = isLoaded ? 'none' : 'block';
+        document.getElementById('pending-list').style.display = isLoaded ? 'block' : 'none';
+    }
+
+    function renderUI(articles) {
+        const pendingList = document.getElementById('pending-list');
+        const historyTable = document.getElementById('history-table');
+        let counts = { Pending: 0, Posted: 0, Rejected: 0 };
+        
+        pendingList.innerHTML = '';
+        historyTable.innerHTML = '';
+
+        articles.forEach(art => {
+            const currentStatus = art.status || "Pending";
+            if(counts[currentStatus] !== undefined) counts[currentStatus]++;
+            
+            if (currentStatus === "Pending") {
+                const isApproved = art.image_info.includes('✅') && art.link_info.includes('✅');
+                pendingList.innerHTML += `
+                    <div class="card card-review mb-5">
+                        <div class="verdict-header ${isApproved ? 'verdict-ready' : 'verdict-fix'}">
+                            ${isApproved ? '✔ System Verdict: Ready to Post' : '✘ System Verdict: Needs Fix'}
+                        </div>
+                        <div class="p-4">
+                            <div class="row">
+                                <div class="col-lg-8">
+                                    <h2 class="fw-bold text-dark mb-3">${art.wp_title || 'Untitled'}</h2>
+                                    <p class="text-muted small mb-3"><strong>Meta:</strong> ${art.wp_meta_title || 'N/A'}</p>
+                                    <div class="html-preview-box">${art.wp_content_html || ''}</div>
+                                </div>
+                                <div class="col-lg-4 border-start ps-lg-4 mt-4 mt-lg-0">
+                                    <h6 class="fw-bold text-uppercase small text-muted mb-3">Compliance Audit</h6>
+                                    <div class="audit-pill">${art.image_info}</div>
+                                    <div class="audit-pill">${art.link_info}</div>
+                                    <div class="audit-pill small text-muted">☁ Hosting: ${art.hosting_info}</div>
+                                    
+                                    <div class="mt-5">
+                                        <button onclick="handleAction(${art.rowId}, 'Approved', this)" class="btn btn-success btn-lg w-100 shadow-sm mb-2">🚀 Approve & Post</button>
+                                        <button onclick="handleAction(${art.rowId}, 'Rejected', this)" class="btn btn-outline-danger w-100">✖ Reject Article</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+            } else {
+                const pillClass = currentStatus === 'Posted' ? 'bg-success' : 'bg-danger';
+                historyTable.innerHTML += `
+                    <tr>
+                        <td class="ps-4 text-muted small">${art.posted_date || '-'}</td>
+                        <td class="fw-bold">${art.wp_title || 'Untitled'}</td>
+                        <td><span class="status-pill text-white ${pillClass}">${currentStatus}</span></td>
+                        <td class="text-end pe-4 small text-muted">${currentStatus === 'Posted' ? 'Published' : 'Rejected'}</td>
+                    </tr>`;
+            }
+        });
+
+        // HANDLE EMPTY PENDING STATE
+        if (counts.Pending === 0) {
+            pendingList.innerHTML = `
+                <div class="empty-state">
+                    <span class="empty-icon">🎉</span>
+                    <h3 class="fw-bold text-dark">All Caught Up!</h3>
+                    <p class="text-muted">There are no articles waiting for your review right now.<br>Check the History Log to see previously processed content.</p>
+                    <button onclick="fetchData()" class="btn btn-primary mt-3 px-4 shadow-sm">Check for Updates</button>
+                </div>`;
+        }
+
+        document.getElementById('count-pending').innerText = counts.Pending;
+        document.getElementById('count-approved').innerText = counts.Posted;
+        document.getElementById('count-rejected').innerText = counts.Rejected;
+        document.getElementById('badge-pending').innerText = counts.Pending;
+
+        toggleUIState(true);
+        updateChart(counts);
+    }
+
+    async function handleAction(rowId, action, btn) {
+        if(!confirm(`Proceed with ${action}?`)) return;
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Syncing...`;
+
+        try {
+            await fetch(POST_API, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ rowId: rowId, action: action })
+            });
+            setTimeout(() => fetchData(), 3000);
+        } catch (e) {
+            alert("Error syncing with n8n.");
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    }
+
+    function updateChart(counts) {
+        const ctx = document.getElementById('statusChart').getContext('2d');
+        if (chartInstance) chartInstance.destroy();
+        chartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Pending', 'Approved', 'Rejected'],
+                datasets: [{
+                    data: [counts.Pending, counts.Posted, counts.Rejected],
+                    backgroundColor: ['#ffc107', '#198754', '#dc3545'],
+                    borderWidth: 0
+                }]
+            },
+            options: { cutout: '80%', plugins: { legend: { position: 'bottom' } } }
+        });
+    }
+
+    window.onload = fetchData;
+</script>
+</body>
+</html>
