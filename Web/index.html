@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Content OS | Automation Command Center</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -46,14 +46,38 @@
         .expansion-wrapper { overflow: hidden; }
         .expansion-inner { padding: 30px; border-top: 1px solid #f0f0f0; background: #fff; }
 
-        /* Responsive Breakpoints */
+        /* FIXED MOBILE VIEW: Bottom Nav */
         @media (max-width: 992px) {
-            #sidebar { width: 100%; height: 70px; bottom: 0; top: auto; padding: 10px; display: flex; flex-direction: row; justify-content: space-around; align-items: center; }
+            #sidebar { 
+                width: 100%; 
+                height: auto; 
+                bottom: 0; 
+                top: auto; 
+                padding: 10px; 
+                display: block; 
+                border-top: 1px solid rgba(255,255,255,0.1);
+                background: #111; /* Darker for better contrast on mobile */
+            }
             #sidebar h3 { display: none; }
-            .nav { flex-direction: row !important; width: 100%; justify-content: space-around; }
-            .nav-link { margin-bottom: 0; padding: 10px 15px; font-size: 14px; border-left: 0; border-bottom: 3px solid transparent; }
-            .nav-link.active { border-left: 0; border-bottom: 3px solid var(--accent); }
-            #main-content { margin-left: 0; width: 100%; padding: 20px; padding-bottom: 100px; }
+            .nav { 
+                flex-direction: row !important; 
+                width: 100%; 
+                justify-content: space-between; 
+                overflow-x: auto; 
+                flex-wrap: nowrap; 
+            }
+            .nav-link { 
+                margin-bottom: 0; 
+                padding: 8px 12px; 
+                font-size: 13px; 
+                border-left: 0 !important; 
+                flex: 1; 
+                text-align: center;
+                white-space: nowrap;
+            }
+            .nav-link.active { border-bottom: 3px solid var(--accent); border-radius: 0; }
+            #main-content { margin-left: 0; width: 100%; padding: 20px; padding-bottom: 90px; }
+            .badge { font-size: 0.7rem; vertical-align: middle; }
         }
 
         .stat-card { border: none; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.02); background: white; padding: 25px; }
@@ -77,8 +101,8 @@
     <h3 class="mb-5 text-accent fw-bold text-center">CONTENT OS</h3>
     <nav class="nav flex-column">
         <a id="link-stats" class="nav-link active" onclick="showTab('tab-stats')">📊 Overview</a>
-        <a id="link-review" class="nav-link" onclick="showTab('tab-review')">⏳ Review Queue <span id="badge-pending" class="badge bg-primary float-end">0</span></a>
-        <a id="link-history" class="nav-link" onclick="showTab('tab-history')">📜 History Log</a>
+        <a id="link-review" class="nav-link" onclick="showTab('tab-review')">⏳ Queue <span id="badge-pending" class="badge bg-primary">0</span></a>
+        <a id="link-history" class="nav-link" onclick="showTab('tab-history')">📜 History</a>
     </nav>
 </div>
 
@@ -113,7 +137,7 @@
             <div class="col-lg-5">
                 <div class="card p-4 border-0 shadow-sm rounded-4 bg-primary text-white h-100 d-flex flex-column align-items-center justify-content-center text-center">
                     <h3 class="fw-bold mb-3">AI Verdict Engine</h3>
-                    <p class="opacity-75">Automated quality audits verify metadata and assets via n8n workflow before posting to WordPress.</p>
+                    <p class="opacity-75">Dashboards are automatically updated via n8n webhook signals from Google Sheets.</p>
                 </div>
             </div>
         </div>
@@ -173,7 +197,7 @@
             const data = await res.json();
             renderUI(data);
         } catch (e) {
-            renderEmptyState("pending-list", "📁", "Connection Error", "Check your n8n workflow.");
+            renderEmptyState("pending-list", "📁", "Connection Error", "Check n8n.");
             toggleUIState(true);
         }
     }
@@ -199,21 +223,14 @@
 
     function renderEmptyState(targetId, icon, title, msg) {
         const container = document.getElementById(targetId);
-        container.innerHTML = `
-            <div class="empty-state my-4">
-                <span class="empty-icon">${icon}</span>
-                <h3 class="fw-bold h5">${title}</h3>
-                <p class="text-muted small">${msg}</p>
-            </div>`;
+        container.innerHTML = `<div class="empty-state my-4"><span class="empty-icon">${icon}</span><h3 class="fw-bold h5">${title}</h3><p class="text-muted small">${msg}</p></div>`;
     }
 
     function toggleHistory(rowId) {
         const content = document.getElementById(`history-expand-${rowId}`);
         const isShowing = content.classList.contains('show');
         document.querySelectorAll('.expandable-content').forEach(el => el.classList.remove('show'));
-        if (!isShowing) {
-            content.classList.add('show');
-        }
+        if (!isShowing) content.classList.add('show');
     }
 
     function renderUI(articles) {
@@ -225,12 +242,11 @@
         let counts = { Pending: 0, Posted: 0, Rejected: 0 };
         pendingList.innerHTML = '';
         historyTable.innerHTML = '';
-        historyEmptyPlaceholder.innerHTML = '';
 
         if (!articles || articles.length === 0) {
-            renderEmptyState("pending-list", "✨", "Pipeline Clean", "No content found in database.");
+            renderEmptyState("pending-list", "✨", "No Data", "Check Google Sheets.");
             historyContainer.style.display = 'none';
-            renderEmptyState("history-empty-placeholder", "📜", "Empty History", "Nothing processed yet.");
+            renderEmptyState("history-empty-placeholder", "📜", "Empty", "No history found.");
             toggleUIState(true);
             return;
         }
@@ -244,13 +260,13 @@
                 pendingList.innerHTML += `
                     <div class="card card-review">
                         <div class="verdict-header ${isApproved ? 'verdict-ready' : 'verdict-fix'}">
-                            ${isApproved ? '✔ Ready to Publish' : '✘ Optimization Required'}
+                            ${isApproved ? '✔ Ready' : '✘ Needs Optimization'}
                         </div>
                         <div class="p-4"><div class="row g-4">
                             <div class="col-lg-8">
                                 <h2 class="fw-bold h4 text-dark mb-2">${art.wp_title || 'Untitled'}</h2>
-                                <p class="text-muted small mb-4"><strong>Meta:</strong> ${art.wp_meta_title || 'N/A'}</p>
-                                <div class="html-preview-box">${art.wp_content_html || ''}</div>
+                                <p class="text-muted small mb-4"><strong>Meta:</strong> ${art.wp_meta_title}</p>
+                                <div class="html-preview-box">${art.wp_content_html}</div>
                             </div>
                             <div class="col-lg-4 border-start ps-lg-4">
                                 <h6 class="fw-bold text-uppercase small text-muted mb-3">Compliance Audit</h6>
@@ -259,8 +275,8 @@
                                 <div class="small text-muted mb-1 fw-bold">HOSTING</div><div class="audit-pill small">${art.hosting_info}</div>
                                 <hr class="my-4">
                                 <h6 class="fw-bold text-uppercase small text-muted mb-2">🏷️ TAGS</h6><div class="mb-3">${formatAssets(art.Tags || art.tags)}</div>
-                                <h6 class="fw-bold text-uppercase small text-muted mb-2">🖼️ IMAGE ASSETS</h6><div class="asset-scroll-box mb-3">${formatAssets(art.Images || art.images)}</div>
-                                <h6 class="fw-bold text-uppercase small text-muted mb-2">🔗 OUTBOUND</h6><div class="asset-scroll-box mb-4">${formatAssets(art.Links || art.links)}</div>
+                                <h6 class="fw-bold text-uppercase small text-muted mb-2">🖼️ ASSETS</h6><div class="asset-scroll-box mb-3">${formatAssets(art.Images || art.images)}</div>
+                                <h6 class="fw-bold text-uppercase small text-muted mb-2">🔗 LINKS</h6><div class="asset-scroll-box mb-4">${formatAssets(art.Links || art.links)}</div>
                                 <button onclick="handleAction(${art.rowId}, 'Approved', this)" class="btn btn-success btn-lg w-100 rounded-4 shadow-sm mb-2">🚀 Approve & Post</button>
                                 <button onclick="handleAction(${art.rowId}, 'Rejected', this)" class="btn btn-outline-danger w-100 rounded-4 border-0">✖ Reject</button>
                             </div>
@@ -273,7 +289,7 @@
                         <td class="ps-4 text-muted small">${art.posted_date || '-'}</td>
                         <td class="fw-bold">${art.wp_title || 'Untitled'}</td>
                         <td><span class="badge rounded-pill ${pillClass}">${currentStatus}</span></td>
-                        <td class="text-end pe-4 text-primary small fw-bold">DETAILS ▾</td>
+                        <td class="text-end pe-4 text-primary small fw-bold">VIEW DETAILS ▾</td>
                     </tr>
                     <tr>
                         <td colspan="4" class="p-0 border-0">
@@ -282,15 +298,14 @@
                                     <div class="expansion-inner">
                                         <div class="row g-4">
                                             <div class="col-xl-9">
-                                                <h6 class="fw-bold text-uppercase text-muted small mb-3">Body Content</h6>
-                                                <div class="html-preview-box" style="max-height:600px; background:white;">${art.wp_content_html}</div>
+                                                <h6 class="fw-bold text-uppercase text-muted small mb-3">Full Article Preview</h6>
+                                                <div class="history-preview-box">${art.wp_content_html}</div>
                                             </div>
                                             <div class="col-xl-3">
-                                                <h6 class="fw-bold text-uppercase text-muted small mb-3">Article Info</h6>
+                                                <h6 class="fw-bold text-uppercase text-muted small mb-3">Assets</h6>
                                                 <div class="p-3 bg-light rounded-4">
-                                                    <p class="small mb-3"><strong>Title:</strong><br>${art.wp_meta_title}</p>
+                                                    <p class="small mb-3"><strong>Meta Title:</strong><br>${art.wp_meta_title}</p>
                                                     <p class="small mb-3"><strong>Tags:</strong><br>${formatAssets(art.Tags)}</p>
-                                                    <p class="small mb-3"><strong>Assets:</strong><br>${formatAssets(art.Images)}</p>
                                                     <p class="small mb-0"><strong>Links:</strong><br>${formatAssets(art.Links)}</p>
                                                 </div>
                                             </div>
@@ -303,10 +318,10 @@
             }
         });
 
-        if (counts.Pending === 0) renderEmptyState("pending-list", "✨", "Queue Clear", "No articles pending review.");
+        if (counts.Pending === 0) renderEmptyState("pending-list", "✨", "Queue Clear", "No items pending review.");
         if (historyTable.innerHTML === "") {
             historyContainer.style.display = 'none';
-            renderEmptyState("history-empty-placeholder", "📜", "History Clean", "No processed articles found.");
+            renderEmptyState("history-empty-placeholder", "📜", "History Clean", "No processed articles.");
         } else {
             historyContainer.style.display = 'block';
         }
@@ -315,26 +330,16 @@
         document.getElementById('count-approved').innerText = counts.Posted;
         document.getElementById('count-rejected').innerText = counts.Rejected;
         document.getElementById('badge-pending').innerText = counts.Pending;
-
         toggleUIState(true);
         updateChart(counts);
     }
 
     async function handleAction(rowId, action, btn) {
-        if(!confirm(`Proceed with ${action}?`)) return;
+        if(!confirm(`Submit as ${action}?`)) return;
         btn.disabled = true;
         btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Syncing...`;
-        try {
-            await fetch(POST_API, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ rowId: rowId, action: action })
-            });
-            setTimeout(() => fetchData(), 7000);
-        } catch (e) {
-            alert("Error syncing.");
-            btn.disabled = false;
-        }
+        await fetch(POST_API, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ rowId, action }) });
+        setTimeout(() => fetchData(), 7000);
     }
 
     function updateChart(counts) {
@@ -342,14 +347,7 @@
         if (chartInstance) chartInstance.destroy();
         chartInstance = new Chart(ctx, {
             type: 'doughnut',
-            data: {
-                labels: ['Pending', 'Approved', 'Rejected'],
-                datasets: [{
-                    data: [counts.Pending, counts.Posted, counts.Rejected],
-                    backgroundColor: ['#0d6efd', '#198754', '#dc3545'],
-                    borderWidth: 0
-                }]
-            },
+            data: { labels: ['Pending', 'Approved', 'Rejected'], datasets: [{ data: [counts.Pending, counts.Posted, counts.Rejected], backgroundColor: ['#0d6efd', '#198754', '#dc3545'], borderWidth: 0 }] },
             options: { cutout: '82%', plugins: { legend: { position: 'bottom' } } }
         });
     }
